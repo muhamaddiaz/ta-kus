@@ -1,11 +1,17 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { Switch, Route, Link, NavLink } from "react-router-dom";
+import { Switch, Route, NavLink } from "react-router-dom";
+import {
+  databaseInstance,
+  databaseInstanceDiastol,
+  databaseInstanceTime
+} from "./firebase";
 
 import styled from "styled-components";
 
 import LogoImage from "./assets/logo.png";
 import ProfileImage from "./assets/kus.png";
+import { thisExpression } from "@babel/types";
 
 // Styling disini >> BEGIN
 
@@ -117,46 +123,79 @@ export const Navbar = () => {
 };
 // Navbar Disini >> END
 
-function App() {
-  return (
-    <React.Fragment>
-      <Navbar />
-      <AppWrapper>
-        <div className="container">
-          <div className="row">
-            <div className="col-md-3 text-center">
-              <Card>
-                <ImageProfile src={ProfileImage} />
-                <ProfileTitle>Kusvihawan</ProfileTitle>
-                <CustomLink
-                  to="/darah"
-                  activeStyle={{
-                    backgroundColor: "#e4e4e4"
-                  }}
-                >
-                  Tekanan Darah
-                </CustomLink>
-                <CustomLink
-                  to="/grafik"
-                  activeStyle={{
-                    backgroundColor: "#e4e4e4"
-                  }}
-                >
-                  Grafik
-                </CustomLink>
-              </Card>
-            </div>
-            <div className="col-md-9">
-              <Switch>
-                <Route path="/darah" exact component={TekananDarah} />
-                <Route path="/grafik" exact component={GrafikDarah} />
-              </Switch>
+class App extends React.Component {
+  state = {
+    sistol: [],
+    diastol: [],
+    timestamp: []
+  };
+
+  componentDidMount() {
+    databaseInstance.on("child_added", (childSnapshot, prev) => {
+      childSnapshot.forEach(snapData => {
+        databaseInstanceDiastol.once("child_added", tolSnap => {
+          tolSnap.forEach(tolDataSnap => {
+            databaseInstanceTime.once("child_added", timeSnap => {
+              timeSnap.forEach(timeDataSnap => {
+                this.setState(prev => ({
+                  sistol: [snapData.val(), ...prev.sistol],
+                  diastol: [tolDataSnap.val(), ...prev.diastol],
+                  timestamp: [timeDataSnap.val(), ...prev.timestamp]
+                }));
+              });
+            });
+          });
+        });
+      });
+    });
+  }
+
+  render() {
+    if (this.state.timestamp) {
+      const myDate = new Date(this.state.timestamp[0]);
+      console.log(myDate.toLocaleDateString());
+    }
+
+    return (
+      <React.Fragment>
+        <Navbar />
+        <AppWrapper>
+          <div className="container">
+            <div className="row">
+              <div className="col-md-3 text-center">
+                <Card>
+                  <ImageProfile src={ProfileImage} />
+                  <ProfileTitle>Kusvihawan</ProfileTitle>
+                  <CustomLink
+                    to="/darah"
+                    activeStyle={{
+                      backgroundColor: "#e4e4e4"
+                    }}
+                  >
+                    Tekanan Darah
+                  </CustomLink>
+                  <CustomLink
+                    to="/grafik"
+                    activeStyle={{
+                      backgroundColor: "#e4e4e4"
+                    }}
+                  >
+                    Grafik
+                  </CustomLink>
+                </Card>
+              </div>
+              <div className="col-md-9">
+                <Switch>
+                  <Route path="/darah" exact component={TekananDarah} />
+                  <Route path="/grafik" exact component={GrafikDarah} />
+                </Switch>
+              </div>
             </div>
           </div>
-        </div>
-      </AppWrapper>
-    </React.Fragment>
-  );
+        </AppWrapper>
+      </React.Fragment>
+    );
+  }
 }
 
 const TekananDarah = () => {
